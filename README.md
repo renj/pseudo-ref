@@ -12,6 +12,7 @@ This project is the implementation of pseudo-reference generation algorithm prop
 - sklearn: 0.19.1
 - matplotlib: 2.1.0
 - scipy: 0.19.1
+- nltk: 3.2.4
 
 ## Lattice Generation
 
