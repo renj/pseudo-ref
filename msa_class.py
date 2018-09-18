@@ -1,18 +1,11 @@
-import sys
-sys.path.append('../pytorch-examples/word_language_model/')
-import time
-import math
 import matplotlib.pyplot as plt
 import torch
-import torch.nn as nn
 from torch.autograd import Variable
 import matplotlib.patches as patches
-
 from scipy.spatial.distance import cosine
-from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 from torchtext import data
-import loader
+from language_model import loader
 
 def load_corpus(path):
     batch_size = 20

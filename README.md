@@ -10,6 +10,8 @@ This project is the implementation of pseudo-reference generation algorithm prop
 - networkx: 2.0
 - numpy: 1.13.3
 - sklearn: 0.19.1
+- matplotlib: 2.1.0
+- scipy: 0.19.1
 
 ## Lattice Generation
 
