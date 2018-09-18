@@ -1,7 +1,7 @@
 import lattice
 import json
 import argparse
-from IPython import embed
+# from IPython import embed
 import networkx as nx
 
 
