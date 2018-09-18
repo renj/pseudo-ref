@@ -14,7 +14,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 import data
-from IPython import embed
+#from IPython import embed
 
 parser = argparse.ArgumentParser(description='PyTorch PTB Language Model')
 

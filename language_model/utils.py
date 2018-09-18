@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import math
 import torch.nn.functional as F
-from IPython import embed
+#from IPython import embed
 import numpy as np
 
 def to_contiguous(tensor):

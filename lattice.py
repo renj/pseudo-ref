@@ -1,4 +1,5 @@
-#from language_model import loader
+import sys
+sys.path.append('./language_model/')
 import msa_class
 import torch
 import numpy as np
@@ -570,9 +571,9 @@ parser.add_argument('-gpuid', default=1, type=int, help='GPUid')
 parser.add_argument('-save_graph', action="store_true", help='save lattice in new_j')
 parser.add_argument('-multi_process', action="store_true", help='enable multi processing')
 parser.add_argument('-n_cpu', default=25, type=int, help='number of threads')
-parser.add_argument('-dataset', default='data/dataset_small.json', help='number of threads')
+parser.add_argument('-dataset', default='data/dataset_small.json', help='path of dataset')
 parser.add_argument('-lm_dictionary', default='data/LM_coco.dict', help='dictionary file of language model')
-parser.add_argument('-lm_model', default='data/LM_coco.pth', help='number of threads')
+parser.add_argument('-lm_model', default='data/LM_coco.pth', help='path of language model')
 
 
 if __name__ == '__main__':
@@ -601,8 +602,6 @@ if __name__ == '__main__':
         with open(opt.lm_dictionary, 'r') as f:
             dictionary = pickle.load(f)
 
-
-        #with open('../pytorch-examples/word_language_model/LM_coco_60_0_BiLangModel.pth') as f:
         with open(opt.lm_model) as f:
             lm_model = torch.load(f, map_location=lambda storage, loc: storage)
             #print '=== LM device ===', lm_model.device, torch.backends.cudnn.version()
@@ -614,7 +613,6 @@ if __name__ == '__main__':
         exit()
 
     print 'Save to file:', file_name
-
 
     if opt.multi_process:
         pool = Pool(opt.n_cpu)

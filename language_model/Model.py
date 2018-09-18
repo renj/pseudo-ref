@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
-from IPython import embed
+#from IPython import embed
 
 class LangModel(nn.Module):
     """Container module with an encoder, a recurrent module, and a decoder."""
