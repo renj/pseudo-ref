@@ -17,7 +17,7 @@ This project includes both hard word alignment and soft word alignment algorithm
 
 ```
 python lattice.py -order_method hard -align_method hard -dataset data/dataset_small.json -minus 0.5
-python23 lattice.py -order_method soft -align_method soft -dataset data/dataset_small.json -minus 0.6 -lm_dictionary data/LM_coco.dict -lm_model data/LM_coco.pth
+python lattice.py -order_method soft -align_method soft -dataset data/dataset_small.json -minus 0.6 -lm_dictionary data/LM_coco.dict -lm_model data/LM_coco.pth
 ```
 
 - align_method [soft|hard]
