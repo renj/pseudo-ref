@@ -17,6 +17,9 @@ from multiprocessing import Pool
 import random
 import time
 import argparse
+from IPython import embed
+if sys.version_info >= (3, 0):
+    from allennlp.modules.elmo import Elmo, batch_to_ids
 
 
 def lattice_to_latex(tokens, lattice):
@@ -130,7 +133,9 @@ def get_node(G, idx):
         if idx in G[u][v]['idx']:
             return u, v
 
-def merge_edges(G, (a0, a1), (b0, b1)):
+def merge_edges(G, pair_a, pair_b):
+    a0, a1 = pair_a
+    b0, b1 = pair_b
     # merge edge b to a
     # if a == b: do nothing
     if b0 == a0 and b1 == a1:
@@ -230,12 +235,12 @@ def acyclic_lm_commons(G, sentences, hiddens, row, col, minus=0.0):
     for u, v in G.edges():
         for pair in [p for p in G[u][v]['idx'] if p[0] == row]:
             if u in row_idx or v in row_idx:
-                print 'Warning'
+                print('Warning')
             row_idx[u] = pair[1]
             row_idx[v] = pair[1]
         for pair in [p for p in G[u][v]['idx'] if p[0] == col]:
             if u in col_idx or v in col_idx:
-                print 'Warning'
+                print('Warning')
             col_idx[u] = pair[1]
             col_idx[v] = pair[1]
     ret = nx.floyd_warshall(G)
@@ -255,6 +260,7 @@ def acyclic_lm_commons(G, sentences, hiddens, row, col, minus=0.0):
         ranges.append(now)
         left_pair = (a+1, b+1)
     commons = [[], []]
+    #embed()
     for a, b in ranges:
         _alignment, _commons = msa_class.msa(hiddens[row][a[0]:a[1]], hiddens[col][b[0]:b[1]], sentences[row][a[0]:a[1]], sentences[col][b[0]:b[1]], not_connect, base=(a[0], b[0]), minus=minus)
 
@@ -266,7 +272,7 @@ def acyclic_lm_commons(G, sentences, hiddens, row, col, minus=0.0):
 
     for a, b in zip(commons[0], commons[1]):
         if (a, b) in not_connect and (a, b) not in do_connect:
-            print 'Warning', (a,b)
+            print('Warning', (a,b))
 
     return commons
 
@@ -293,12 +299,12 @@ def acyclic_commons(G, sentences, row, col):
             #row_idx.append((u, pair[1]))
             #row_idx.append((v, pair[1]))
             if u in row_idx or v in row_idx:
-                print 'Warning'
+                print('Warning')
             row_idx[u] = pair[1]
             row_idx[v] = pair[1]
         for pair in [p for p in G[u][v]['idx'] if p[0] == col]:
             if u in col_idx or v in col_idx:
-                print 'Warning'
+                print('Warning')
             col_idx[u] = pair[1]
             col_idx[v] = pair[1]
     ret = nx.floyd_warshall(G)
@@ -336,7 +342,7 @@ def acyclic_commons(G, sentences, row, col):
 
     for a, b in zip(commons[0], commons[1]):
         if (a, b) in not_connect and (a, b) not in do_connect:
-            print 'Warning', (a,b)
+            print('Warning', (a,b))
 
     return commons
 
@@ -345,7 +351,7 @@ def generate_lattice(sentences, hiddens, order_method, align_method, get_G=False
     G = init_graph(sentences)
 
     if order_method == 'hard':
-        vectorizer = CountVectorizer()    
+        vectorizer = CountVectorizer()
         matrix = vectorizer.fit_transform([' '.join(line) for line in sentences])
         simi = cosine_similarity(matrix)
     elif order_method == 'soft':
@@ -382,7 +388,7 @@ def generate_lattice(sentences, hiddens, order_method, align_method, get_G=False
             commons = acyclic_lm_commons(G, sentences, hiddens, row, col,  minus)
             merge(G, commons, row, col)
             if check_cycle(G):
-                print 'cycle exist'
+                print('cycle exist')
                 return G
         else:
             result, commons, L = lcs(sentences[row], sentences[col])
@@ -465,7 +471,105 @@ def generate_refs(sentences, order_method, align_method, minus, sentid, simi_mat
         sentid += 1
 
     return new_sentences
- 
+
+def init_elmo(gpu):
+    options_file = "data/elmo_2x4096_512_2048cnn_2xhighway_options.json"
+    weight_file = "data/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5"
+
+    #options_file = "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/                         elmo_2x4096_512_2048cnn_2xhighway_options.json"
+    #weight_file = "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/                          elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5"
+
+    print('init elmo')
+    #embed()
+    if gpu == -1:
+        #self.elmo = Elmo(options_file, weight_file, 2, dropout=0)
+        elmo = Elmo(options_file, weight_file, 1, dropout=0)
+    else:
+        #self.elmo = Elmo(options_file, weight_file, 2, dropout=0).cuda(self.gpu)
+        elmo = Elmo(options_file, weight_file, 1, dropout=0).cuda(gpu)
+    return elmo
+
+def load_hiddens_from_elmo(j, elmo, batch_size=128, gpu=-1):
+    outputs = []
+    crt_size = 0
+    txts = []
+    t0 = time.time()
+    mat = []
+    idx = 0
+    for img in j['images']:
+        idx += 1
+        for sent in img['sentences']:
+            #hiddens.append(h)
+            txts.append(sent['tokens'])
+            crt_size += 1
+            if crt_size >= batch_size:
+                #t_len = [len(txt) for txt in txts]
+                #max_len = max(t_len)
+                chars = batch_to_ids(txts).to(gpu)
+                output = elmo(chars)['elmo_representations'][-1]
+                #embed()
+                '''
+                for txt in txts:
+                    new_txt = [dictionary[w] for w in txt] + [0] * (max_len - len(txt))
+                    mat.append(new_txt)
+                feature = torch.from_numpy(np.array(mat))
+                feature = Variable(feature.t().cuda(model.device))
+                emb = model.encoder(feature)
+                #print '=== emb device ===', model.device, torch.backends.cudnn.version()
+                output, hidden = model.rnn(emb)
+                '''
+
+                for i, txt in enumerate(txts):
+                    #print(i, txt,)
+                    #outputs.append(output[:len(txt), i, :].cpu().data.numpy())
+                    outputs.append(output[i, :len(txt), :].cpu().data.numpy())
+                    #outputs.append(output[:len(txt), i, :].cpu().data)
+
+                mat = []
+                crt_size = 0
+                txts = []
+                #flag = True
+                #break
+        #if flag:
+        #    break
+        if crt_size > 0:
+            chars = batch_to_ids(txts).to(gpu)
+            output = elmo(chars)['elmo_representations'][-1]
+            #t_len = [len(txt) for txt in txts]
+            #max_len = max(t_len)
+            #embed()
+            '''
+            for txt in txts:
+                new_txt = [dictionary[w] for w in txt] + [0] * (max_len - len(txt))
+                mat.append(new_txt)
+            feature = torch.from_numpy(np.array(mat))
+            feature = Variable(feature.t().cuda(model.device))
+            emb = model.encoder(feature)
+            output, hidden = model.rnn(emb)
+            '''
+
+            for i, txt in enumerate(txts):
+                #outputs.append(output[:len(txt), i, :].cpu().data.numpy())
+                outputs.append(output[i, :len(txt), :].cpu().data.numpy())
+                #outputs.append(output[:len(txt), i, :].cpu().data)
+
+            mat = []
+            crt_size = 0
+            txts = []
+
+    for i, txt in enumerate(txts):
+        outputs.append(output[i, :len(txt), :].cpu().data.numpy())
+
+    idx = 0
+    for img in j['images']:
+        for sent in img['sentences']:
+            sent['hidden'] = outputs[idx]
+            idx += 1
+
+    t1 = time.time()
+    print('Load hidden completed!', t1 - t0)
+
+
 
 def load_hiddens(j, model, dictionary, batch_size=128):
     outputs = []
@@ -491,12 +595,12 @@ def load_hiddens(j, model, dictionary, batch_size=128):
                 emb = model.encoder(feature)
                 #print '=== emb device ===', model.device, torch.backends.cudnn.version()
                 output, hidden = model.rnn(emb)
-                
+
                 for i, txt in enumerate(txts):
-                    print i, txt,
+                    print(i, txt,)
                     outputs.append(output[:len(txt), i, :].cpu().data.numpy())
                     #outputs.append(output[:len(txt), i, :].cpu().data)
-                    
+
                 mat = []
                 crt_size = 0
                 txts = []
@@ -515,15 +619,15 @@ def load_hiddens(j, model, dictionary, batch_size=128):
             feature = Variable(feature.t().cuda(model.device))
             emb = model.encoder(feature)
             output, hidden = model.rnn(emb)
-            
+
             for i, txt in enumerate(txts):
                 outputs.append(output[:len(txt), i, :].cpu().data.numpy())
                 #outputs.append(output[:len(txt), i, :].cpu().data)
-                
+
             mat = []
             crt_size = 0
             txts = []
-    
+
     for i, txt in enumerate(txts):
         outputs.append(output[:len(txt), i, :].cpu().data.numpy())
 
@@ -534,7 +638,7 @@ def load_hiddens(j, model, dictionary, batch_size=128):
             idx += 1
 
     t1 = time.time()
-    print 'Load hidden completed!', t1 - t0
+    print('Load hidden completed!', t1 - t0)
 
 def load_simi_mat(img, minus):
     sents = img['sentences']
@@ -574,6 +678,7 @@ parser.add_argument('-n_cpu', default=25, type=int, help='number of threads')
 parser.add_argument('-dataset', default='data/dataset_small.json', help='path of dataset')
 parser.add_argument('-lm_dictionary', default='data/LM_coco.dict', help='dictionary file of language model')
 parser.add_argument('-lm_model', default='data/LM_coco.pth', help='path of language model')
+parser.add_argument('-use_elmo', action='store_true', help='wheather use ELMo')
 
 
 if __name__ == '__main__':
@@ -593,26 +698,30 @@ if __name__ == '__main__':
         lm_model = None
         dictionary = None
     elif opt.align_method == 'soft':
-        # Load Language Model for soft alignment, 
+        # Load Language Model for soft alignment,
         #batch_size = 20
         #text_field = data.Field(lower=True)
         #label_field = data.Field(lower=True)
         #corpus = loader.Corpus(opt.lm_data, text_field, label_field, batch_size)
         #dictionary = text_field.vocab.stoi
-        with open(opt.lm_dictionary, 'r') as f:
-            dictionary = pickle.load(f)
+        if opt.use_elmo:
+            elmo = init_elmo(opt.gpuid)
+            load_hiddens_from_elmo(j, elmo, gpu=opt.gpuid)
+        else:
+            with open(opt.lm_dictionary, 'rb') as f:
+                dictionary = pickle.load(f)
 
-        with open(opt.lm_model) as f:
-            lm_model = torch.load(f, map_location=lambda storage, loc: storage)
-            #print '=== LM device ===', lm_model.device, torch.backends.cudnn.version()
-            lm_model.cuda(opt.gpuid)
-            lm_model.device = opt.gpuid
-        load_hiddens(j, lm_model, dictionary)
+            with open(opt.lm_model) as f:
+                lm_model = torch.load(f, map_location=lambda storage, loc: storage)
+                #print '=== LM device ===', lm_model.device, torch.backends.cudnn.version()
+                lm_model.cuda(opt.gpuid)
+                lm_model.device = opt.gpuid
+            load_hiddens(j, lm_model, dictionary)
     else:
-        print 'wrong align method'
+        print('wrong align method')
         exit()
 
-    print 'Save to file:', file_name
+    print('Save to file:', file_name)
 
     if opt.multi_process:
         pool = Pool(opt.n_cpu)
@@ -630,7 +739,7 @@ if __name__ == '__main__':
         #sentences = [s for s in sentences if len(s['tokens']) <= 20]
 
         simi_mat = None
- 
+
         if opt.multi_process:
             if opt.save_graph:
                 tokens = [s['tokens'] for s in sentences]
@@ -652,13 +761,13 @@ if __name__ == '__main__':
                         G = new_sentences
                         new_j['images'][idx]['lattice'] = nx.node_link_data(G)
                         t1 = time.time()
-                        print '%d/%d'%(idx, len(j['images'])), 'time:%.3f'%(t1 - t0)
+                        print('%d/%d'%(idx, len(j['images'])), 'time:%.3f'%(t1 - t0))
                     else:
                         sentid += len(new_sentences)
                         bleus = [s['bleu'] for s in new_sentences]
                         new_j['images'][idx]['sentences'] = new_sentences
                         t1 = time.time()
-                        print '%d/%d'%(idx, len(j['images'])), 'time:%.3f'%(t1 - t0), '#refs:', len(new_sentences)
+                        print('%d/%d'%(idx, len(j['images'])), 'time:%.3f'%(t1 - t0), '#refs:', len(new_sentences))
                     t0 = t1
 
                 n_left = 0
@@ -676,14 +785,14 @@ if __name__ == '__main__':
                 #new_j['images'][idx]['lattice'] = G
                 new_j['images'][idx]['lattice'] = nx.node_link_data(G)
                 t1 = time.time()
-                print '%d/%d'%(idx, len(j['images'])), 'time:%.3f'%(t1 - t0)
+                print('%d/%d'%(idx, len(j['images'])), 'time:%.3f'%(t1 - t0))
             else:
                 new_sentences = generate_refs(sentences, opt.order_method, opt.align_method, opt.minus, sentid, simi_mat)
                 sentid += len(new_sentences)
                 bleus = [s['bleu'] for s in new_sentences]
                 new_j['images'][idx]['sentences'] = new_sentences
                 t1 = time.time()
-                print '%d/%d'%(idx, len(j['images'])), 'time:%.3f'%(t1 - t0), '#refs:', len(new_sentences)
+                print('%d/%d'%(idx, len(j['images'])), 'time:%.3f'%(t1 - t0), '#refs:', len(new_sentences))
             t0 = t1
 
     if opt.multi_process and len(sentences_pool) > 0 and len(idxs) > 0:
@@ -692,13 +801,13 @@ if __name__ == '__main__':
                 G = new_sentences
                 new_j['images'][idx]['lattice'] = nx.node_link_data(G)
                 t1 = time.time()
-                print '%d/%d'%(idx, len(j['images'])), 'time:%.3f'%(t1 - t0)
+                print('%d/%d'%(idx, len(j['images'])), 'time:%.3f'%(t1 - t0))
             else:
                 sentid += len(new_sentences)
                 bleus = [s['bleu'] for s in new_sentences]
                 new_j['images'][idx]['sentences'] = new_sentences
                 t1 = time.time()
-                print '%d/%d'%(idx, len(j['images'])), 'time:%.3f'%(t1 - t0), '#refs:', len(new_sentences)
+                print('%d/%d'%(idx, len(j['images'])), 'time:%.3f'%(t1 - t0), '#refs:', len(new_sentences))
             t0 = t1
 
     with open(file_name, 'w') as f:

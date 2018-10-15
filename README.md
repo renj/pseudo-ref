@@ -4,7 +4,9 @@ This project is the implementation of pseudo-reference generation algorithm prop
 
 ## Dependencies
 
-- python: 2.7
+- python: 2.7 (using example bi-directional language model)
+- python: 3.6 (using pre-trained ELMo bi-directional language model)
+- allennlp: 0.7.0 (using pre-trained ELMo bi-directional language model)
 - pytrch: 0.3.1
 - torchtext: 0.2.1
 - networkx: 2.0
@@ -16,11 +18,21 @@ This project is the implementation of pseudo-reference generation algorithm prop
 
 ## Lattice Generation
 
-This project includes both hard word alignment and soft word alignment algorithms to generate lattice. You can use the [coco-caption](!http://cs.stanford.edu/people/karpathy/deepimagesent/caption_datasets.zip) dataset or a small dataset extracted from coco we provide at 'data/dataset_small.json'. You can generate lattice with hard or soft word alignment algorithm via the following example commands.
+This project includes both hard word alignment and soft word alignment algorithms to generate lattice. You can use the [coco-caption](!http://cs.stanford.edu/people/karpathy/deepimagesent/caption_datasets.zip) dataset or a small dataset extracted from coco we provide at 'data/dataset_small.json'. You can generate lattice with hard or soft word alignment algorithm via the following example commands with Python 2.7.
 
 ```
 python lattice.py -order_method hard -align_method hard -dataset data/dataset_small.json -minus 0.5
 python lattice.py -order_method soft -align_method soft -dataset data/dataset_small.json -minus 0.6 -lm_dictionary data/LM_coco.dict -lm_model data/LM_coco.pth
+```
+
+If you want to use ELMo language model ([Deep contextualized word representations](!https://arxiv.org/abs/1802.05365)) which is pre-trained in a larger corpora, you can use the following example command with Python 3.6 (ELMo from allennlp only support Python 3.6). You must download the ELMo weights file before using it.
+
+```
+cd ./data
+wget https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_options.json
+wget https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5
+cd ..
+python lattice.py -order_method soft -align_method soft -dataset data/dataset_small.json -minus 0.6 -use_elmo
 ```
 
 - align_method [soft|hard]
@@ -43,6 +55,8 @@ python lattice.py -order_method soft -align_method soft -dataset data/dataset_sm
     - The language model used in soft word alignment algorithm
 - lm_dictionary
     - The dictionary file of the language model used in soft word alignment algorithm
+- use_elmo
+    - Use pre-trained ELMo language model fro AllenNLP
 
 The output will be a json file stalled as 'data/dataset\_(ORDER_METHOD)\_(ALIGNMENT_METHOD)_(MINUS)'.
 
