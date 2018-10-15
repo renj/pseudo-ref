@@ -17,7 +17,7 @@ from multiprocessing import Pool
 import random
 import time
 import argparse
-from IPython import embed
+#from IPython import embed
 if sys.version_info >= (3, 0):
     from allennlp.modules.elmo import Elmo, batch_to_ids
 
@@ -499,59 +499,24 @@ def load_hiddens_from_elmo(j, elmo, batch_size=128, gpu=-1):
     for img in j['images']:
         idx += 1
         for sent in img['sentences']:
-            #hiddens.append(h)
             txts.append(sent['tokens'])
             crt_size += 1
             if crt_size >= batch_size:
-                #t_len = [len(txt) for txt in txts]
-                #max_len = max(t_len)
                 chars = batch_to_ids(txts).to(gpu)
                 output = elmo(chars)['elmo_representations'][-1]
-                #embed()
-                '''
-                for txt in txts:
-                    new_txt = [dictionary[w] for w in txt] + [0] * (max_len - len(txt))
-                    mat.append(new_txt)
-                feature = torch.from_numpy(np.array(mat))
-                feature = Variable(feature.t().cuda(model.device))
-                emb = model.encoder(feature)
-                #print '=== emb device ===', model.device, torch.backends.cudnn.version()
-                output, hidden = model.rnn(emb)
-                '''
 
                 for i, txt in enumerate(txts):
-                    #print(i, txt,)
-                    #outputs.append(output[:len(txt), i, :].cpu().data.numpy())
                     outputs.append(output[i, :len(txt), :].cpu().data.numpy())
-                    #outputs.append(output[:len(txt), i, :].cpu().data)
 
                 mat = []
                 crt_size = 0
                 txts = []
-                #flag = True
-                #break
-        #if flag:
-        #    break
         if crt_size > 0:
             chars = batch_to_ids(txts).to(gpu)
             output = elmo(chars)['elmo_representations'][-1]
-            #t_len = [len(txt) for txt in txts]
-            #max_len = max(t_len)
-            #embed()
-            '''
-            for txt in txts:
-                new_txt = [dictionary[w] for w in txt] + [0] * (max_len - len(txt))
-                mat.append(new_txt)
-            feature = torch.from_numpy(np.array(mat))
-            feature = Variable(feature.t().cuda(model.device))
-            emb = model.encoder(feature)
-            output, hidden = model.rnn(emb)
-            '''
 
             for i, txt in enumerate(txts):
-                #outputs.append(output[:len(txt), i, :].cpu().data.numpy())
                 outputs.append(output[i, :len(txt), :].cpu().data.numpy())
-                #outputs.append(output[:len(txt), i, :].cpu().data)
 
             mat = []
             crt_size = 0

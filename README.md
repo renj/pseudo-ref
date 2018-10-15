@@ -18,14 +18,14 @@ This project is the implementation of pseudo-reference generation algorithm prop
 
 ## Lattice Generation
 
-This project includes both hard word alignment and soft word alignment algorithms to generate lattice. You can use the [coco-caption](!http://cs.stanford.edu/people/karpathy/deepimagesent/caption_datasets.zip) dataset or a small dataset extracted from coco we provide at 'data/dataset_small.json'. You can generate lattice with hard or soft word alignment algorithm via the following example commands with Python 2.7.
+This project includes both hard word alignment and soft word alignment algorithms to generate lattice. You can use the [coco-caption](http://cs.stanford.edu/people/karpathy/deepimagesent/caption_datasets.zip) dataset or a small dataset extracted from coco we provide at 'data/dataset_small.json'. You can generate lattice with hard or soft word alignment algorithm via the following example commands with Python 2.7.
 
 ```
 python lattice.py -order_method hard -align_method hard -dataset data/dataset_small.json -minus 0.5
 python lattice.py -order_method soft -align_method soft -dataset data/dataset_small.json -minus 0.6 -lm_dictionary data/LM_coco.dict -lm_model data/LM_coco.pth
 ```
 
-If you want to use ELMo language model ([Deep contextualized word representations](!https://arxiv.org/abs/1802.05365)) which is pre-trained in a larger corpora, you can use the following example command with Python 3.6 (ELMo from allennlp only support Python 3.6). You must download the ELMo weights file before using it.
+If you want to use ELMo language model ([Deep contextualized word representations](https://arxiv.org/abs/1802.05365)) which is pre-trained in a larger corpora, you can use the following example command with Python 3.6 (ELMo from allennlp only support Python 3.6). You must download the ELMo weights file before using it.
 
 ```
 cd ./data
@@ -64,6 +64,8 @@ The output will be a json file stalled as 'data/dataset\_(ORDER_METHOD)\_(ALIGNM
 
 A bidirectional language model will be used in the soft sentence alignment algorithm. Our implementation is included in the folder 'language_model'. We provide a model trained on MSCOCO at 'data/LM_coco.pth' and it's corresponding dictionary data 'data/LM_coco.dict'. (Please note that this language model is slightly different to the one used in paper, so the output lattice maybe different.)
 
+We also provide ELMo as an alternative of the bidirectional language model to enable the soft sentence alignment algorithm on more general purposes. You can find pre-trained ELMo in other languages via this [repository](https://github.com/HIT-SCIR/ELMoForManyLangs).
+
 
 ## Lattice Visualization
 
@@ -72,4 +74,12 @@ We provide codes to visualize generated lattice by converting it into LaTex. For
 ```
 python lattice2latex.py -original_dataset data/dataset_small.json -lattice_dataset data/dataset_soft_soft_0.60.json -lattice_index 1
 ```
+
+## Generation Speed
+
+If the input sentences are quite long, it will take a long time to do the depth first search. Here are several advices for that case:
+
+1. Start from a high threshold of 'minus' or use the dynamic threshold described in the paper.
+2. When do DFS, memorize the prefix from root to current node. This will speedup the algorithm but uses much more memory.
+3. When the lattice graph is generated, you can first calculate the number of path traversing each edge, then take the graph as a probabilistic graph and sample N (e.g. 100) trajectories. This is a linear algorithm. 
 
